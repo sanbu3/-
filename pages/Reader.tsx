@@ -14,6 +14,7 @@ export const Reader: React.FC = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [readingProgress, setReadingProgress] = useState(0); // Reading progress percentage
   
   // Settings State
   const [settings, setSettings] = useState<ReaderSettings>(() => {
@@ -46,6 +47,7 @@ export const Reader: React.FC = () => {
     if (novelId && chapterNum) {
       setLoading(true);
       window.scrollTo(0, 0);
+      setReadingProgress(0);
       
       const loadData = async () => {
         const [c, n] = await Promise.all([
@@ -65,6 +67,31 @@ export const Reader: React.FC = () => {
       loadData();
     }
   }, [novelId, chapterNum]);
+
+  // Scroll Progress Listener
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!chapter) return;
+      
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight;
+      const winHeight = window.innerHeight;
+      const scrollable = docHeight - winHeight;
+
+      if (scrollable > 0) {
+        const progress = (scrollTop / scrollable) * 100;
+        setReadingProgress(Math.min(100, Math.max(0, progress)));
+      } else {
+        setReadingProgress(100);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    // Initial calculation
+    handleScroll();
+    
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [chapter]);
 
   const toggleMenu = () => {
     setShowMenu(!showMenu);
@@ -225,21 +252,39 @@ export const Reader: React.FC = () => {
       </div>
 
       {/* Bottom Navigation (Fixed) */}
-      <div className={`fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-gray-900/95 backdrop-blur shadow-t border-t border-gray-100 dark:border-gray-800 z-20 transform transition-transform duration-300 flex items-center justify-around px-4 ${showMenu ? 'translate-y-0' : 'translate-y-full'}`}>
-         <button onClick={handlePrev} className="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-400 hover:text-brand-600">
-            <ChevronLeft size={24} />
-            <span className="text-[10px]">上一章</span>
-         </button>
+      <div className={`fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur shadow-t border-t border-gray-100 dark:border-gray-800 z-20 transform transition-transform duration-300 flex flex-col ${showMenu ? 'translate-y-0' : 'translate-y-full'}`}>
          
-         <button onClick={() => navigate(`/novel/${novelId}`)} className="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-400 hover:text-brand-600">
-            <List size={24} />
-            <span className="text-[10px]">目录</span>
-         </button>
+         {/* Progress Bar Container */}
+         <div className="w-full px-6 pt-3 pb-1">
+            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1.5 font-medium">
+                <span>{chapter?.title}</span>
+                <span>{Math.round(readingProgress)}%</span>
+            </div>
+            <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+               <div 
+                 className="h-full bg-brand-600 rounded-full transition-all duration-150 ease-out" 
+                 style={{ width: `${readingProgress}%` }} 
+               />
+            </div>
+         </div>
 
-         <button onClick={handleNext} className="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-400 hover:text-brand-600">
-            <ChevronRight size={24} />
-            <span className="text-[10px]">下一章</span>
-         </button>
+         {/* Buttons Container */}
+         <div className="flex items-center justify-around h-16">
+            <button onClick={handlePrev} className="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-400 hover:text-brand-600">
+                <ChevronLeft size={24} />
+                <span className="text-[10px]">上一章</span>
+            </button>
+            
+            <button onClick={() => navigate(`/novel/${novelId}`)} className="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-400 hover:text-brand-600">
+                <List size={24} />
+                <span className="text-[10px]">目录</span>
+            </button>
+
+            <button onClick={handleNext} className="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-400 hover:text-brand-600">
+                <ChevronRight size={24} />
+                <span className="text-[10px]">下一章</span>
+            </button>
+         </div>
       </div>
     </div>
   );
